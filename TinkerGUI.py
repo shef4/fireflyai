@@ -5,21 +5,24 @@ import numpy as np
 def save_frame():
     print("Saving the information")
     firstname = first_name_entry.get()
-    lastname = last_name_entry.get()
+    plants = plants_combobox.get()
     Occupation = title_combobox.get()
     age = age_spinbox.get()
     organisms = pets_combobox.get()
     ACstatus = AC_status_var.get()
-    print(f"name: {firstname} {lastname} worker as: {Occupation} age: {age}, organisms at house: {organisms}")
-    print("AC status: ", ACstatus)
+    print(f"name: {firstname}  worker as: {Occupation} age: {age}, organisms at house: {organisms},{plants}")
+    print("AC status: ", ACstatus, type(ACstatus))
+    if(ACstatus == "ON"):
+         val = 1000
+         return val
 
 tempIn = 100 # call variable from the other file and display it here
-
+'''
 def increaseTemp():
     # increase temperature by 1 degree
     tempIn = tempIn.get() 
     tempIn = tempIn + 1
-
+'''
     
 window = tkinter.Tk() # parent window - largest box
 window.title("ThermoFli Dashboard")
@@ -35,19 +38,20 @@ user_info_frame.grid(row=0, column=0, padx=20, pady=10)
 
 # taking user information
 
-# First/last name creating input box and label
-first_name_label = tkinter.Label(user_info_frame, text="First Name:")
+# name creating input box and label
+first_name_label = tkinter.Label(user_info_frame, text="Name:")
 first_name_label.grid(row=0, column=0)
-last_name_label = tkinter.Label(user_info_frame, text="Last Name:")
-last_name_label.grid(row=0, column=1)
-
 first_name_entry = tkinter.Entry(user_info_frame)
 first_name_entry.grid(row=1, column=0)
-last_name_entry = tkinter.Entry(user_info_frame)
-last_name_entry.grid(row=1, column=1)
 
-# occupation type input box and label
-title_lable= tkinter.Label(user_info_frame, text="Occupation Type:")
+#are there plants in the house 
+plants_lable= tkinter.Label(user_info_frame, text="Plants:")
+plants_combobox = ttk.Combobox(user_info_frame, values=["Yes", "No"])
+plants_lable.grid(row=0, column=1)
+plants_combobox.grid(row=1, column=1)
+
+# User type input box and label
+title_lable= tkinter.Label(user_info_frame, text="User Type:")
 title_combobox = ttk.Combobox(user_info_frame, values=["Student", "Worker", "Retired", "Hybrid Worker"])
 title_lable.grid(row=0, column=2)
 title_combobox.grid(row=1, column=2)
@@ -60,7 +64,7 @@ age_spinbox.grid(row=1, column=3)
 
 # pets input box and label
 Pets_label = tkinter.Label(user_info_frame, text="Other living organisms at home:")
-pets_combobox = ttk.Combobox(user_info_frame, values=["--NA--","Plants", "Dogs", "Cats", "Baby at home"])
+pets_combobox = ttk.Combobox(user_info_frame, values=["--NA--", "Dogs", "Cats", "Baby at home"])
 Pets_label.grid(row=2 ,column=0)
 pets_combobox.grid(row=3, column=0) 
 
@@ -72,8 +76,10 @@ for widget in user_info_frame.winfo_children():
 main_settings = tkinter.LabelFrame(frame, text="Temperature Settings")
 main_settings.grid(row=1, column=0, sticky="news", padx=20, pady=20)
 
+# AC status
 AC_status_var = tkinter.StringVar(value="OFF")
 AC_status_label = tkinter.Label(main_settings, text=" AC Status:", )
+AI_prediction_lable = tkinter.Label(main_settings, text=save_frame() )
 AC_status_check = tkinter.Checkbutton(main_settings,variable = AC_status_var, onvalue="ON", offvalue="OFF")
 AC_status_label.grid(row=0, column=0)
 AC_status_check.grid(row=0, column=1)
@@ -84,14 +90,13 @@ for widget in user_info_frame.winfo_children():
 model_frame = tkinter.LabelFrame(frame, text=" Your model")
 model_frame.grid(row=2, column=0, sticky="news", padx=20, pady=20)
 
-# creating ubcrease temperature button
+# creating increase temperature button
 # creating decrease temperature button
 first_name_label = tkinter.Label(model_frame, text=" Change Temperature: ")
 first_name_label.grid(row=0, column=0,padx=15, pady=10)
 
-increase_temp_button = tkinter.Button(model_frame, text ="                 +               ", command=increaseTemp)
+increase_temp_button = tkinter.Button(model_frame, text ="                 +               ")#, command=increaseTemp)
 increase_temp_button.grid(row=1, column=1,padx=15, pady=10)
-
 
 AC_display = tkinter.Label(model_frame, text= tempIn)
 AC_display.grid(row=1, column=2,padx=15, pady=10)
@@ -118,17 +123,3 @@ mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height
 mybuttonn.pack()
 
 window.mainloop() 
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
