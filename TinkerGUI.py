@@ -307,11 +307,12 @@ def save_frame():
     print("Saving the information")
     firstname = first_name_entry.get()
     plants = plants_combobox.get()
-    Occupation = title_combobox.get()
+    pets = pets_combobox.get()
+    occupation = title_combobox.get()
     age = age_spinbox.get()
-    organisms = pets_combobox.get()
+    sound = noise_combobox.get()
     ACstatus = AC_status_var.get()
-    print(f"name: {firstname}  worker as: {Occupation} age: {age}, organisms at house: {organisms},{plants}")
+    print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
     print("AC status: ", ACstatus, type(ACstatus))
     if(ACstatus == "ON"):
          val = 1000
