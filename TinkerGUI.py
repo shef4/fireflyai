@@ -1,8 +1,36 @@
 import tkinter 
 from tkinter import ttk
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+
+#imports
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import os
+import random
+import json
+import sklearn
+from sklearn.model_selection import train_test_split
+import joblib
+
+#imports for random forest
+from sklearn.ensemble import RandomForestClassifier
+
+# imports for KNN
+from sklearn.neighbors import KNeighborsClassifier
+
+#imports for LSTM
+from numpy import zeros, newaxis
+import tensorflow as tf
+from tensorflow import keras
+from keras.models import Sequential 
+from keras import regularizers
+from keras import Input
+from keras.layers import Bidirectional, LSTM, RepeatVector, Dense, TimeDistributed, Dropout
+from pandas.core.describe import describe_timestamp_as_categorical_1d
 
 
 class Data_Processor():
@@ -297,102 +325,103 @@ class Model_LSTM():
             os.makedirs('models/lstm')
         joblib.dump(self.model, 'models/lstm'+filename)
         
-LSTM_model= model_LSTM()
-Processer = Data_processor()
-user_profile = Processer.gen_user_profile()
-Processed_data=Processer.process_data("raw_data", user_profile)
-model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},Processed_data)
+if __name__ == "__main__":
+    LSTM_model= Model_LSTM()
+    Processer = Data_Processor()
+    user_profile = Processer.gen_user_profile()
+    Processed_data=Processer.process_data("raw_data", user_profile)
+    LSTM_model.train(hp ={"hyper_param_name":{"values": [], "index": 0}},data = Processed_data)
 
-tempIn = 100 # call variable from the other file and display it here
-'''
-def increaseTemp():
-# increase temperature by 1 degree
-    tempIn = tempIn.get() 
-    tempIn = tempIn + 1
-'''
-    
-window = tkinter.Tk() # parent window - largest box
-window.title("ThermoFli Dashboard")
-
-
-# create a frame
-frame = tkinter.Frame(window)
-frame.pack()
-
-# user info frame
-user_info_frame = tkinter.LabelFrame(frame, text="User Info")
-user_info_frame.grid(row=0, column=0, padx=20, pady=10)
-
-# taking user information
-
-# are there plants in the house 
-plants_lable= tkinter.Label(user_info_frame, text="Plants:")
-plants_combobox = ttk.Combobox(user_info_frame, values=["Yes", "No"])
-plants_lable.grid(row=0, column=1)
-plants_combobox.grid(row=1, column=1)
-
-# are there plants in the house 
-pets_lable= tkinter.Label(user_info_frame, text="Pets:")
-pets_combobox = ttk.Combobox(user_info_frame, values=["Yes", "No"])
-pets_lable.grid(row=0, column=0)
-pets_combobox.grid(row=1, column=0)
-
-# User type input box and label
-title_lable= tkinter.Label(user_info_frame, text="User Type:")
-title_combobox = ttk.Combobox(user_info_frame, values=["Student", "Worker", "Senior Citizen"])
-title_lable.grid(row=0, column=2)
-title_combobox.grid(row=1, column=2)
-
-# User type input box and label
-noise_lable= tkinter.Label(user_info_frame, text="Noise Type:")
-noise_combobox = ttk.Combobox(user_info_frame, values=["Small", "Medium", "large"])
-noise_lable.grid(row=0, column=3)
-noise_combobox.grid(row=1, column=3)
+    tempIn = 100 # call variable from the other file and display it here
+    '''
+    def increaseTemp():
+    # increase temperature by 1 degree
+        tempIn = tempIn.get() 
+        tempIn = tempIn + 1
+    '''
+        
+    window = tkinter.Tk() # parent window - largest box
+    window.title("ThermoFli Dashboard")
 
 
-# setting the padding for the widgets
-for widget in user_info_frame.winfo_children():
-    widget.grid_configure(padx=15, pady=10)
-    
-# saving the information
-main_settings = tkinter.LabelFrame(frame, text="Temperature Settings")
-main_settings.grid(row=1, column=0, sticky="news", padx=20, pady=20)
+    # create a frame
+    frame = tkinter.Frame(window)
+    frame.pack()
 
-# displaying the graph
-def plot_prediction(user_profile, predictions, labels, time_range = "week"):
-    time = {"day": 288, "week": 7*288, "month": 288*7*4, "year": 288*52*7}
-    
-    # print("user_type: ", user_profile["user_type"])
-    # print("noise_type: ", user_profile["noise_type"])
-    # print("pets: ", user_profile["pets"])
-    # print("plants: ", user_profile["plants"])
-    # print("insolation_time: ", user_profile["insolation_time"])
-    
-    # TODO:add user info on plot
-    plt.plot(predictions[:time[time_range]].flatten())
-    plt.plot(labels[:time[time_range]].flatten())
-    plt.title('model prediction VS actual')
-    plt.legend(['prediction', 'actual'], loc='upper left')
-    plt.show()
+    # user info frame
+    user_info_frame = tkinter.LabelFrame(frame, text="User Info")
+    user_info_frame.grid(row=0, column=0, padx=20, pady=10)
 
-def graph():
-    processor = Data_Processor()
-    plants = plants_combobox.get()
-    pets = pets_combobox.get()
-    occupation = title_combobox.get()
-    sound = noise_combobox.get()
-    print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
-    time_range="week"
-    insolation_time_ac = random.uniform(1,0.2)
-    insolation_time_external = random.uniform(1,0.2)
-    schedule_cycle = 7
-    user_profile = processor.gen_user_profile(occupation, sound, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
-    data = processor.process_data("raw_data", user_profile, quick = True)
-    predictions, labels = model.predict(data)
-    plot_prediction(user_profile, predictions, labels, time_range)
+    # taking user information
+
+    # are there plants in the house 
+    plants_lable= tkinter.Label(user_info_frame, text="Plants:")
+    plants_combobox = ttk.Combobox(user_info_frame, values=["Yes", "No"])
+    plants_lable.grid(row=0, column=1)
+    plants_combobox.grid(row=1, column=1)
+
+    # are there plants in the house 
+    pets_lable= tkinter.Label(user_info_frame, text="Pets:")
+    pets_combobox = ttk.Combobox(user_info_frame, values=["Yes", "No"])
+    pets_lable.grid(row=0, column=0)
+    pets_combobox.grid(row=1, column=0)
+
+    # User type input box and label
+    title_lable= tkinter.Label(user_info_frame, text="User Type:")
+    title_combobox = ttk.Combobox(user_info_frame, values=["Student", "Worker", "Senior Citizen"])
+    title_lable.grid(row=0, column=2)
+    title_combobox.grid(row=1, column=2)
+
+    # User type input box and label
+    noise_lable= tkinter.Label(user_info_frame, text="Noise Type:")
+    noise_combobox = ttk.Combobox(user_info_frame, values=["Small", "Medium", "large"])
+    noise_lable.grid(row=0, column=3)
+    noise_combobox.grid(row=1, column=3)
 
 
-mybuttonn = tkinter.Button(window, text="Graph", command=graph(LSTM_model, user_type, noise_type, pets, plants), width=10, height=2)
-mybuttonn.pack()
+    # setting the padding for the widgets
+    for widget in user_info_frame.winfo_children():
+        widget.grid_configure(padx=15, pady=10)
+        
+    # saving the information
+    main_settings = tkinter.LabelFrame(frame, text="Temperature Settings")
+    main_settings.grid(row=1, column=0, sticky="news", padx=20, pady=20)
 
-window.mainloop() 
+    # displaying the graph
+    def plot_prediction(user_profile, predictions, labels, time_range = "week"):
+        time = {"day": 288, "week": 7*288, "month": 288*7*4, "year": 288*52*7}
+        
+        # print("user_type: ", user_profile["user_type"])
+        # print("noise_type: ", user_profile["noise_type"])
+        # print("pets: ", user_profile["pets"])
+        # print("plants: ", user_profile["plants"])
+        # print("insolation_time: ", user_profile["insolation_time"])
+        
+        # TODO:add user info on plot
+        plt.plot(predictions[:time[time_range]].flatten())
+        plt.plot(labels[:time[time_range]].flatten())
+        plt.title('model prediction VS actual')
+        plt.legend(['prediction', 'actual'], loc='upper left')
+        plt.show()
+
+    def graph():
+        processor = Data_Processor()
+        plants = plants_combobox.get()
+        pets = pets_combobox.get()
+        occupation = title_combobox.get()
+        sound = noise_combobox.get()
+        print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
+        time_range="week"
+        insolation_time_ac = random.uniform(1,0.2)
+        insolation_time_external = random.uniform(1,0.2)
+        schedule_cycle = 7
+        user_profile = processor.gen_user_profile(occupation, sound, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
+        data = processor.process_data("raw_data", user_profile, quick = True)
+        predictions, labels = LSTM_model.predict(data)
+        plot_prediction(user_profile, predictions, labels, time_range)
+
+
+    mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height=2)
+    mybuttonn.pack()
+
+    window.mainloop() 
