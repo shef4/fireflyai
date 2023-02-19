@@ -301,7 +301,7 @@ LSTM_model= model_LSTM()
 Processer = Data_processor()
 user_profile = Processer.gen_user_profile()
 Processed_data=Processer.process_data("raw_data", user_profile)
-model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},Processed_data)
+LSTM_model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},Processed_data)
 
 tempIn = 100 # call variable from the other file and display it here
 '''
@@ -388,11 +388,11 @@ def graph():
     schedule_cycle = 7
     user_profile = processor.gen_user_profile(occupation, sound, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
     data = processor.process_data("raw_data", user_profile, quick = True)
-    predictions, labels = model.predict(data)
+    predictions, labels = LSTM_model.predict(data)
     plot_prediction(user_profile, predictions, labels, time_range)
 
 
-mybuttonn = tkinter.Button(window, text="Graph", command=graph(LSTM_model, user_type, noise_type, pets, plants), width=10, height=2)
+mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height=2)
 mybuttonn.pack()
 
 window.mainloop() 
