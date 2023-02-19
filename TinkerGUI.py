@@ -303,21 +303,6 @@ user_profile = Processer.gen_user_profile()
 Processed_data=Processer.process_data("raw_data", user_profile)
 model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},Processed_data)
 
-def save_frame():
-    print("Saving the information")
-    firstname = first_name_entry.get()
-    plants = plants_combobox.get()
-    pets = pets_combobox.get()
-    occupation = title_combobox.get()
-    age = age_spinbox.get()
-    sound = noise_combobox.get()
-    ACstatus = AC_status_var.get()
-    print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
-    print("AC status: ", ACstatus, type(ACstatus))
-    if(ACstatus == "ON"):
-         val = 1000
-         return val
-
 tempIn = 100 # call variable from the other file and display it here
 '''
 def increaseTemp():
@@ -384,22 +369,24 @@ def plot_prediction(user_profile, predictions, labels, time_range = "week"):
     # print("insolation_time: ", user_profile["insolation_time"])
     
     # TODO:add user info on plot
-    
-    
-
     plt.plot(predictions[:time[time_range]].flatten())
     plt.plot(labels[:time[time_range]].flatten())
     plt.title('model prediction VS actual')
     plt.legend(['prediction', 'actual'], loc='upper left')
     plt.show()
 
-def graph(model, user_type, noise_type, pets, plants):
+def graph():
     processor = Data_Processor()
+    plants = plants_combobox.get()
+    pets = pets_combobox.get()
+    occupation = title_combobox.get()
+    sound = noise_combobox.get()
+    print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
     time_range="week"
     insolation_time_ac = random.uniform(1,0.2)
     insolation_time_external = random.uniform(1,0.2)
     schedule_cycle = 7
-    user_profile = processor.gen_user_profile(user_type, noise_type, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
+    user_profile = processor.gen_user_profile(occupation, sound, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
     data = processor.process_data("raw_data", user_profile, quick = True)
     predictions, labels = model.predict(data)
     plot_prediction(user_profile, predictions, labels, time_range)
