@@ -298,9 +298,10 @@ class Model_LSTM():
         
 LSTM_model= model_LSTM()
 Processer = Data_processor()
-user_profile = processor.gen_user_profile()
-Processed_data=processor.process_data("raw_data", user_profile)
-model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},data)
+user_profile = Processer.gen_user_profile()
+Processed_data=Processer.process_data("raw_data", user_profile)
+model.train(hyper_params ={"hyper_param_name":{"values": [], "index": 0}},Processed_data)
+
 def save_frame():
     print("Saving the information")
     firstname = first_name_entry.get()
@@ -382,6 +383,7 @@ def plot_prediction(predictions, labels, time_range = "week"):
 def graph(user_type, noise_type, pets, plants, time_range):
     processor = Data_Processor()
     time_range="week"
+    
     user_profile = processor.gen_user_profile(user_type, noise_type, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
     print("user_type: ", user_profile["user_type"])
     print("noise_type: ", user_profile["noise_type"])
