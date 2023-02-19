@@ -2,6 +2,7 @@ import tkinter
 from tkinter import ttk
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
 
 class Data_Processor():
@@ -372,30 +373,38 @@ main_settings = tkinter.LabelFrame(frame, text="Temperature Settings")
 main_settings.grid(row=1, column=0, sticky="news", padx=20, pady=20)
 
 # displaying the graph
-def plot_prediction(predictions, labels, time_range = "week"):
+def plot_prediction(user_profile, predictions, labels, time_range = "week"):
     time = {"day": 288, "week": 7*288, "month": 288*7*4, "year": 288*52*7}
+    
+    # print("user_type: ", user_profile["user_type"])
+    # print("noise_type: ", user_profile["noise_type"])
+    # print("pets: ", user_profile["pets"])
+    # print("plants: ", user_profile["plants"])
+    # print("insolation_time: ", user_profile["insolation_time"])
+    
+    # TODO:add user info on plot
+    
+    
+
     plt.plot(predictions[:time[time_range]].flatten())
     plt.plot(labels[:time[time_range]].flatten())
     plt.title('model prediction VS actual')
     plt.legend(['prediction', 'actual'], loc='upper left')
     plt.show()
 
-def graph(user_type, noise_type, pets, plants, time_range):
+def graph(model, user_type, noise_type, pets, plants):
     processor = Data_Processor()
     time_range="week"
-    
+    insolation_time_ac = random.uniform(1,0.2)
+    insolation_time_external = random.uniform(1,0.2)
+    schedule_cycle = 7
     user_profile = processor.gen_user_profile(user_type, noise_type, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
-    print("user_type: ", user_profile["user_type"])
-    print("noise_type: ", user_profile["noise_type"])
-    print("pets: ", user_profile["pets"])
-    print("plants: ", user_profile["plants"])
-    print("insolation_time: ", user_profile["insolation_time"])
     data = processor.process_data("raw_data", user_profile, quick = True)
     predictions, labels = model.predict(data)
-    plot_prediction(predictions, labels, time_range)
+    plot_prediction(user_profile, predictions, labels, time_range)
 
 
-mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height=2)
+mybuttonn = tkinter.Button(window, text="Graph", command=graph(LSTM_model, user_type, noise_type, pets, plants), width=10, height=2)
 mybuttonn.pack()
 
 window.mainloop() 
