@@ -1,13 +1,7 @@
-import tkinter 
-from tkinter import ttk
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-
 #imports
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import random
@@ -32,15 +26,18 @@ from keras import Input
 from keras.layers import Bidirectional, LSTM, RepeatVector, Dense, TimeDistributed, Dropout
 from pandas.core.describe import describe_timestamp_as_categorical_1d
 
+from tkinter import ttk
+import random
+
 
 class Data_Processor():
     def __init__(self):
-        self.user_types = ["worker", "student", "senior_citizen"]
-        self.noise_types = ["small", "mid", "large"]
+        self.user_types = ["Worker", "Student", "Senior Citizen"]
+        self.noise_types = ["Small", "Medium", "Large"]
         self.has_pet = [True, False]
         self.has_plant = [True, False]
         self.sleep_temp = [x for x in range(60, 68)]
-        self.noise_value = { "small": random.uniform(-1, 1), "mid": random.uniform(-1, 2), "large": random.uniform(-2, 3)}
+        self.noise_value = { "Small": random.uniform(-1, 1), "Medium": random.uniform(-1, 2), "Large": random.uniform(-2, 3)}
         self.days_of_week = { "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
         self.seasonal_temp = { 1: 68, 2: 75, 3: 78, 4: 72}# 1-winter 2-spring 3-summer 4-fall
         
@@ -51,14 +48,6 @@ class Data_Processor():
     # convert to fahrenheit
     def ctf(self, temp):
         return temp * 9 / 5 + 32
-
-    def set_internal_temp(self, row, data, user_profile):
-        col, factor = (2, "external_temp") if data[row, 4] == -99 else (4, "ac_temp")
-        if row == 0:
-            data[row, 5] = data[row, col]
-        else:
-            delta = (data[row, col] - data[row - 1, 5]) / (user_profile["insolation_time"][factor] * 60)
-            data[row, 5] = data[row - 1, 5] + delta
 
     def format_data(self, data_df):
         data_df.columns = ['WBANNO', 'UTC_DATE', 'UTC_TIME', 'LST_DATE', 'LST_TIME', 'CRX_VN', 'LONGITUDE', 'LATITUDE', 'AIR_TEMPERATURE',
@@ -90,7 +79,7 @@ class Data_Processor():
             f.write(json.dumps(user_profile))
         return
 
-# generate random day events
+    # generate random day events
     def gen_schedule(self, first_event, num_events, noise_type):
         for i in range(num_events + 2):
             end_value = 0
@@ -121,16 +110,15 @@ class Data_Processor():
                         "plants": plants if plants else random.choice(self.has_plant),
                         "sleep_temp": random.choice(self.sleep_temp),
                         "insolation_time": {"ac_temp": insolation_time_ac if insolation_time_ac else random.uniform(1, 0.1),
-                                            "external_temp": insolation_time_external if insolation_time_external else random.uniform(1, 0.1)}
-        }
+                                            "external_temp": insolation_time_external if insolation_time_external else random.uniform(1, 0.1)}}
         num_days = schedule_cycle if schedule_cycle else 7
         # monday=0, tuesday=1, wednesday=2, thursday=3, friday=4, saturday=5, sunday=6
         schedule = []
         for day in range(num_days):
                     first_event = (7, 10)
                     num_events = random.randint(1, 4)
-                    gen_day = list(self.gen_schedule((7, 16), 1, profile["noise_type"])) if profile["user_type"] == "worker" and day % 7 < 5 else list(self.gen_schedule(first_event, num_events, profile["noise_type"]))
-                    if profile["user_type"] == "student":
+                    gen_day = list(self.gen_schedule((7, 16), 1, profile["noise_type"])) if profile["user_type"] == "Worker" and day % 7 < 5 else list(self.gen_schedule(first_event, num_events, profile["noise_type"]))
+                    if profile["user_type"] == "Student":
                         if day % 7 in (5, 6):
                             day_schedule = gen_day
                         elif day % 7 in (1, 3):
@@ -145,80 +133,77 @@ class Data_Processor():
         profile["schedule"] = schedule
         return profile
 
-    def process_data(self, filename, user_profile, quick = False):
+    def process_data(self, filename, user_profile, quick=False):
         # process data Date=0, Time=1, Outside Temp=2, Outside Humidity=3, AC_TEMP=4, INTERNAL_TEMP=5, AI_CHANGE=6, USER_CHANGE=7, DAY_OF_WEEK=8, SEASON=9
-        raw_data_df = pd.read_csv(filename + '.txt', sep = '\s+', header = None)
-
+        raw_data_df = pd.read_csv(filename+'.txt', sep='\s+', header=None)
         # convert raw_data to numpy array data
         data, unformated_date_time = self.format_data(raw_data_df)
         # add new columns on end
         data = np.hstack((data, np.full((len(data), 6), None)))
         # initializes variables
-        current_sleep_temp = self.ftc(user_profile["sleep_temp"])
-        current_pet_temp = random.uniform(self.ftc(64), self.ftc(78))
-        current_plant_temp = random.uniform(self.ftc(60), self.ftc(75))
-        current_season_temp = self.ftc(self.seasonal_temp[data[0][0].month % 12 // 3 + 1] + self.noise_value[user_profile["noise_type"]])
-        current_ac_delay = user_profile["insolation_time"]["ac_temp"] * 2 + 0.5 * self.noise_value[user_profile["noise_type"]]
-        day_index = self.days_of_week[data[0, 0].day_name()]
-        event_stack = user_profile["schedule"][day_index]
-        event_status = "starting"
-        for row in range(len(data)):
-            # set default values
-            data[row, 4:10] = [-99, -99, 0, 0, day_index % 7, data[row, 0].month % 12 // 3 + 1]
-            event = event_stack[0]
-            # update values based on time
-            if row != 0:
-                if data[row, 0].day != data[row - 1, 0].day:  # new day
-                    day_index += 1
-                    event_stack = user_profile["schedule"][day_index % len(user_profile["schedule"])]
-                if data[row, 9] != data[row - 1, 9]:  # new season
-                    current_season_temp = self.ftc(self.seasonal_temp[data[row, 9]] + self.noise_value[user_profile["noise_type"]])
-                    current_plant_temp += self.noise_value[user_profile["noise_type"]]
-                if data[row, 0].month != data[row - 1, 0].month:  # new month
-                    current_sleep_temp += self.noise_value[user_profile["noise_type"]]
-                    if data[row, 0].month % 3 == 0:
-                        current_pet_temp += self.noise_value[user_profile["noise_type"]]
-            # check event status relative to time
-            if event[0] == data [row, 1].hour:
-                event_status = "starting"
-            elif event[0] < data [row, 1].hour < event[1] - current_ac_delay:
-                event_status = "happening"
-            elif event[1]-current_ac_delay <= data [row, 1].hour <= event[1]:
-                event_status = "ending"
-            elif event[1] < data [row, 1].hour:
-                if len(event_stack) > 1:
-                    event_stack = event_stack [1:]
-                    event = event_stack [0]
-                    event_status = "starting" if event[0] == data [row, 1].hour else "ending"
-            # set ac temp based on current event
-            if event[0] == 0 or event[1] == 23:  # (sleep,23)(0, wake_up_time)
-                if event[0] == 0 and event_status == "ending":
-                    data [row, 4] = current_season_temp
-                    data [row, 7] = 1 if data [row, 1].minute == 0 else 0
+        sleep_temp = self.ftc(user_profile["sleep_temp"])
+        pet_temp = random.uniform(self.ftc(64), self.ftc(78))
+        plant_temp = random.uniform(self.ftc(60), self.ftc(75))
+        season_temp = self.ftc(self.seasonal_temp[data[0][0].month % 12 // 3 + 1] + self.noise_value[user_profile["noise_type"]])
+        ac_delay = user_profile["insolation_time"]["ac_temp"] * 2 + 0.5*self.noise_value[user_profile["noise_type"]]
+        schedule_cycle = len(user_profile["schedule"])
+        schedule_idx = self.days_of_week[data[0, 0].day_name()]
+        day_value = 288
+        hour_value = 12
+        num_days = len(data) // day_value
+        for day_idx in range(num_days):
+            today = day_idx * day_value
+            tomorrow = today + day_value
+            day_of_week = self.days_of_week[data[today, 0].day_name()]
+            data[today:tomorrow, 4:10] = [-99, -99, 0, 0, day_of_week % 7, ((data[today, 0].month % 12) // 3) + 1]
+            if today > 0:
+                yesterday = today - day_value
+                if data[today, 9] != data[yesterday, 9]:  # new season
+                    season_temp = self.ftc(self.seasonal_temp[data[today, 9]] + self.noise_value[user_profile["noise_type"]])
+                    plant_temp += self.noise_value[user_profile["noise_type"]]
+                if data[today, 0].month != data[yesterday, 0].month:  # new month
+                    sleep_temp += self.noise_value[user_profile["noise_type"]]
+                    if data[today, 0].month % 3 == 0:
+                        pet_temp += self.noise_value[user_profile["noise_type"]]
+            schedule = user_profile["schedule"][schedule_idx % schedule_cycle]
+            schedule_idx += 1
+            for event_idx in range(len(schedule)):
+                start_time, end_time = schedule[event_idx]
+                sleeping = (start_time == 0) or (end_time == 23)
+                start_idx = today + start_time * hour_value
+                end_time = end_time+1 if end_time == 23 else int(end_time - ac_delay+1)
+                end_idx = min(start_idx + (end_time - start_time) * hour_value, len(data))
+                if sleeping:
+                    data[start_idx:end_idx, 4] = sleep_temp
+                    data[start_idx, 7] = 1 if end_time == 23 else 0
                 else:
-                    data [row, 4] = current_sleep_temp
-                    data [row, 7] = 1 if (event[1], event_status, 0) == (23, "starting", data [row, 1].minute) else 0
-            else:  # (event_start, event_end)
-                if event_status in ["starting", "happening"]:
-                    if user_profile ["pets"] and user_profile ["plants"]:
-                        data [row, 4] = (current_pet_temp + current_plant_temp)/2
-                    elif user_profile ["pets"] or user_profile ["plants"]:
-                        data [row, 4] = current_plant_temp if user_profile ["plants"] else current_pet_temp
+                    if user_profile["pets"] and user_profile["plants"]:
+                        data[start_idx:end_idx, 4] = (pet_temp + plant_temp)/2
+                    elif user_profile["pets"] or user_profile["plants"]:
+                        data[start_idx:end_idx, 4] = plant_temp if user_profile["plants"] else pet_temp
                     else:
-                        data [row, 4] = -99
-                    data [row, 7] = 1 if (event_status, 0) == ("starting", data [row, 1].minute) else 0
-                elif event_status == "ending":
-                    data [row, 4] = current_season_temp
-                    data [row, 7] = 1 if (event[1]-current_ac_delay, 0) == (data [row, 1].hour, data [row, 1].minute) else 0
-            # set internal temp
-            self.set_internal_temp(row, data, user_profile)
+                        data[start_idx:end_idx, 4] = -99
+                    data[start_idx, 7] = 1   
+                if event_idx < len(schedule)-1:
+                    start_idx = end_idx
+                    end_idx = min(start_idx + (schedule[event_idx+1][0]-end_time)*hour_value, len(data))
+                    data[start_idx:end_idx, 4] = season_temp
+                    data[start_idx, 7] = 1         
+        # set internal temp
+        for row in range(len(data)):
+            col, factor = (2, "external_temp") if data[row, 4] == -99 else (4, "ac_temp")
+            if row == 0:
+                data[row, 5] = data[row, col]
+            else:
+                delta = (data[row, col] - data[row-1, 5]) / (user_profile["insolation_time"][factor]*60)
+                data[row, 5] = data[row-1, 5] + delta      
         # concat raw date time
-        data = np.hstack((unformated_date_time [:, :], data [:, [2, 3, 4, 5, 6, 7, 8, 9]]))
+        data = np.hstack((unformated_date_time[:, :], data[:, [2, 3, 4, 5, 6, 7, 8, 9]]))
         # save data
         if not quick:
             self.save_data(data, user_profile)
         return data
-
+    
     # plot data
     def plot_data(self, processed_data_df, user_profile, show_ac_temp=True, show_inside_temp=True, show_outside_temp=True, convert=True, time_type="day"):
         print("user_type: ", user_profile ["user_type"])
@@ -264,6 +249,8 @@ class Model_LSTM():
 # create default model
         self.model = None
         self.history = None
+        self.mean = None
+        self.std = None
 
     def format_data(self, data):
         timesteps = 50
@@ -279,6 +266,8 @@ class Model_LSTM():
         df = pd.get_dummies(df, columns=['Season'])
 # Normalize numeric data
         norm_col = ['External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp']
+        self.mean = df['AC Temp'].mean()
+        self.std = df['AC Temp'].std()
         df[norm_col] = (df[norm_col] - df[norm_col].mean()) / df[norm_col].std()
         data = df.to_numpy()
         x_data, y_data = data[:, [0,1,3,4,5,6,7]], data[:, 2]
@@ -287,7 +276,7 @@ class Model_LSTM():
         y_data = np.reshape(y_data, (int(y_data.shape[0]/timesteps), timesteps, 1))
         return x_data.astype('float32'), y_data.astype('float32')
 
-    def train(self, hp, data, batch_size=64, epochs=100):
+    def train(self, data, batch_size=64, epochs=150):
         train, val = train_test_split(data, test_size=0.2, shuffle=False)
         x_train, y_train = self.format_data(train)
         x_val, y_val = self.format_data(val)
@@ -297,8 +286,9 @@ class Model_LSTM():
         self.model.add(Dropout(0.2))
         self.model.add(Dense(units=1, activation='linear'))  # Output Layer
 # self.model.summary()
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=15, mode='min')
         self.model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(), metrics=[tf.keras.metrics.MeanAbsoluteError()])
-        self.history = self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), verbose=2, shuffle=False)
+        self.history = self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size,callbacks=[early_stopping], validation_data=(x_val, y_val), verbose=2, shuffle=False)
 # cross validate models acc
         acc = self.history.history['val_loss'][-1]
         return acc
@@ -312,7 +302,8 @@ class Model_LSTM():
     def predict(self, data):
 # give model prediction and actual value
         inputs, labels = self.format_data(data)
-        predictions = self.model.predict(inputs)
+        labels = labels*self.std+self.mean
+        predictions = self.model.predict(inputs)*self.std+self.mean
         return predictions, labels
 
     def load(self, filename):
@@ -330,7 +321,7 @@ if __name__ == "__main__":
     Processer = Data_Processor()
     user_profile = Processer.gen_user_profile()
     Processed_data=Processer.process_data("raw_data", user_profile)
-    LSTM_model.train(hp ={"hyper_param_name":{"values": [], "index": 0}},data = Processed_data)
+    LSTM_model.train(data=Processed_data)
 
     tempIn = 100 # call variable from the other file and display it here
     '''
@@ -391,17 +382,13 @@ if __name__ == "__main__":
     def plot_prediction(user_profile, predictions, labels, time_range = "week"):
         time = {"day": 288, "week": 7*288, "month": 288*7*4, "year": 288*52*7}
         
-        # print("user_type: ", user_profile["user_type"])
-        # print("noise_type: ", user_profile["noise_type"])
-        # print("pets: ", user_profile["pets"])
-        # print("plants: ", user_profile["plants"])
-        # print("insolation_time: ", user_profile["insolation_time"])
-        
-        # TODO:add user info on plot
+        # add user info on plot
+        user_info = f"user_type: {user_profile['user_type']}\nnoise_type: {user_profile['noise_type']}\npets: {user_profile['pets']}\nplants: {user_profile['plants']}\ninsolation_time: {user_profile['insolation_time']}"
         plt.plot(predictions[:time[time_range]].flatten())
         plt.plot(labels[:time[time_range]].flatten())
         plt.title('model prediction VS actual')
         plt.legend(['prediction', 'actual'], loc='upper left')
+        plt.text(0.5, -0.2, user_info, ha='center', va='top')
         plt.show()
 
     def graph():
@@ -410,7 +397,6 @@ if __name__ == "__main__":
         pets = pets_combobox.get()
         occupation = title_combobox.get()
         sound = noise_combobox.get()
-        print(f"pets: {pets}  plants: {plants} User Type: {occupation}, Noise Type: {sound}")
         time_range="week"
         insolation_time_ac = random.uniform(1,0.2)
         insolation_time_external = random.uniform(1,0.2)
@@ -419,7 +405,6 @@ if __name__ == "__main__":
         data = processor.process_data("raw_data", user_profile, quick = True)
         predictions, labels = LSTM_model.predict(data)
         plot_prediction(user_profile, predictions, labels, time_range)
-
 
     mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height=2)
     mybuttonn.pack()
