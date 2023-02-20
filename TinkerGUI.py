@@ -367,7 +367,6 @@ def plot_prediction(user_profile, predictions, labels, time_range = "week"):
     # print("pets: ", user_profile["pets"])
     # print("plants: ", user_profile["plants"])
     # print("insolation_time: ", user_profile["insolation_time"])
-    
     # TODO:add user info on plot
     plt.plot(predictions[:time[time_range]].flatten())
     plt.plot(labels[:time[time_range]].flatten())
