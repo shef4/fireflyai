@@ -100,7 +100,7 @@ class Data_Processor():
                 start_value, end_value = start_value, end_value + 1
             start = end + 2
             end = start + random.randint(2, 3)
-            yield(start_value, end_value)
+            yield (start_value, end_value)
 
     # generate random profile
     def gen_user_profile(self, user_type= None, noise_type= None, pets= None, plants= None, insolation_time_ac= None, insolation_time_external= None, schedule_cycle= None):
@@ -115,21 +115,21 @@ class Data_Processor():
         # monday=0, tuesday=1, wednesday=2, thursday=3, friday=4, saturday=5, sunday=6
         schedule = []
         for day in range(num_days):
-                    first_event = (7, 10)
-                    num_events = random.randint(1, 4)
-                    gen_day = list(self.gen_schedule((7, 16), 1, profile["noise_type"])) if profile["user_type"] == "Worker" and day % 7 < 5 else list(self.gen_schedule(first_event, num_events, profile["noise_type"]))
-                    if profile["user_type"] == "Student":
-                        if day % 7 in (5, 6):
-                            day_schedule = gen_day
-                        elif day % 7 in (1, 3):
-                            day_schedule = gen_day if day % 7 == 1 else copy_tuesday
-                            copy_tuesday = day_schedule
-                        elif day % 7 in (0, 2, 4):
-                            day_schedule = gen_day if day % 7 == 0 else copy_monday
-                            copy_monday = day_schedule
-                    else:
-                        day_schedule = gen_day
-                    schedule.append(day_schedule)
+            first_event = (7, 10)
+            num_events = random.randint(1, 4)
+            gen_day = list(self.gen_schedule((7, 16), 1, profile["noise_type"])) if profile["user_type"] == "Worker" and day % 7 < 5 else list(self.gen_schedule(first_event, num_events, profile["noise_type"]))
+            if profile["user_type"] == "Student":
+                if day % 7 in (5, 6):
+                    day_schedule = gen_day
+                elif day % 7 in (1, 3):
+                    day_schedule = gen_day if day % 7 == 1 else copy_tuesday
+                    copy_tuesday = day_schedule
+                elif day % 7 in (0, 2, 4):
+                    day_schedule = gen_day if day % 7 == 0 else copy_monday
+                    copy_monday = day_schedule
+            else:
+                day_schedule = gen_day
+            schedule.append(day_schedule)
         profile["schedule"] = schedule
         return profile
 
