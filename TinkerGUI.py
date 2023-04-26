@@ -26,6 +26,7 @@ from keras import Input
 from keras.layers import Bidirectional, LSTM, RepeatVector, Dense, TimeDistributed, Dropout
 from pandas.core.describe import describe_timestamp_as_categorical_1d
 
+import tkinter
 from tkinter import ttk
 import random
 
@@ -243,7 +244,7 @@ class Data_Processor():
         plt.legend()
         plt.show()
         
-        
+  
 class Model_LSTM():
     def __init__(self):
 # create default model
@@ -253,65 +254,101 @@ class Model_LSTM():
         self.std = None
 
     def format_data(self, data):
-        timesteps = 50
-# drop date time column
-        data = data[:,2:]
-        data = data[:3000,:]
-        data = data[:len(data) - len(data) % timesteps]
-# one hot encode col 6 and 7 using dataframe
-        df = pd.DataFrame(data, columns=['External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp', 'AI Change', 'User Change', 'Day of Week', 'Season'])
+        timesteps = 6
+        shift = 288*7  
+        # drop date time column
+        data = data[:,1:]
+        #data = data[:len(data) - len(data) % timesteps+288]
+        
+        df = pd.DataFrame(data, columns=['time','External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp', 'AI Change', 'User Change', 'Day of Week', 'Season'])
+
+        ######## split time into hourly interval and ohc
+        df['time'] = df['time']/100
+        swap_list = ['External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp', 'AI Change', 'User Change', 'Day of Week', 'Season','time']
+        df = df.reindex(columns=swap_list)
+
+        #one hot coding
+        #df['time'] = pd.Categorical(df['time'].astype(str), categories=['0', '1', '2', '3', '4', '5', '6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'])
+        #df = pd.get_dummies(df, columns=['time'])
         df['Day of Week'] = pd.Categorical(df['Day of Week'].astype(str), categories=['0', '1', '2', '3', '4', '5', '6'])
         df = pd.get_dummies(df, columns=['Day of Week'])
         df['Season'] = pd.Categorical(df['Season'].astype(str), categories=['1', '2', '3', '4'])
         df = pd.get_dummies(df, columns=['Season'])
-# Normalize numeric data
-        norm_col = ['External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp']
+        # Normalize numeric data
+        norm_col = ['External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp','time']
         self.mean = df['AC Temp'].mean()
         self.std = df['AC Temp'].std()
         df[norm_col] = (df[norm_col] - df[norm_col].mean()) / df[norm_col].std()
+        df.drop(['Internal Temp'], axis=1, inplace=True)
+
         data = df.to_numpy()
-        x_data, y_data = data[:, [0,1,3,4,5,6,7]], data[:, 2]
+        x_data_df = df.copy()
+        x_data_df.drop(['AC Temp'], axis=1, inplace=True)
+        x_data = x_data_df.to_numpy()
+        x_data = x_data[:x_data.shape[0]-shift]
+        y_data = df['AC Temp'].to_numpy()
+        y_data = y_data[shift:y_data.shape[0]]
         x_data = np.reshape(x_data, (int(x_data.shape[0]/timesteps), timesteps, x_data.shape[1]))
         y_data = np.reshape(y_data, (y_data.shape[0], 1, 1))
         y_data = np.reshape(y_data, (int(y_data.shape[0]/timesteps), timesteps, 1))
         return x_data.astype('float32'), y_data.astype('float32')
 
-    def train(self, data, batch_size=64, epochs=150):
-        train, val = train_test_split(data, test_size=0.2, shuffle=False)
+    def train(self, data, batch_size=24, epochs=100):
+        ######################
+        #total data: 40 days
+        #training: 28 days
+        #testing: 12 days
+        ######################
+        data = data[:11520]
+        train, val = train_test_split(data, test_size=0.3, shuffle=False)
+        #train = data[:8065]
+        #val = data[8065:11522]
+        print(train.shape)
+        print(val.shape)
         x_train, y_train = self.format_data(train)
         x_val, y_val = self.format_data(val)
-# train model
+        print(x_train.shape)
+        print(x_val.shape)
+
+        ############ changed model into stateful model
+        ############ note that number of test/train/validation data entries must be divisible by batchsize(24)
+        # train model
         self.model = Sequential(name="LSTM-Model")  # Model
-        self.model.add(LSTM(64, input_shape=(x_train.shape[1], x_train.shape[2]), return_sequences=True))
+        self.model.add(LSTM(64, batch_input_shape=(batch_size,x_train.shape[1], x_train.shape[2]), return_sequences=True, stateful=True))
+        #self.model.add(LSTM(128, return_sequences=True))
+        #self.model.add(LSTM(64, return_sequences=True))
         self.model.add(Dropout(0.2))
         self.model.add(Dense(units=1, activation='linear'))  # Output Layer
-# self.model.summary()
-        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=15, mode='min')
-        self.model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(), metrics=[tf.keras.metrics.MeanAbsoluteError()])
+        self.model.summary()
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=3, mode='min')
+        self.model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(learning_rate=0.0002), metrics=[tf.keras.metrics.MeanAbsoluteError()])
         self.history = self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size,callbacks=[early_stopping], validation_data=(x_val, y_val), verbose=2, shuffle=False)
-# cross validate models acc
+        # cross validate models acc
         acc = self.history.history['val_loss'][-1]
         return acc
 
     def test(self, data):
-# test models acc
+        # test models acc
         x_test, y_test = self.format_data(data)
-        acc = self.model.evaluate(x_test, y_test, batch_size=128)[1]
+        #acc = self.model.evaluate(x_test, y_test, batch_size=16)[1]
+        acc = 0
         return acc
       
     def predict(self, data):
-# give model prediction and actual value
+        # give model prediction and actual value
         inputs, labels = self.format_data(data)
+        #inputs = inputs[0:1728,:]
+        #labels = labels[0:1728,:]
         labels = labels*self.std+self.mean
-        predictions = self.model.predict(inputs)*self.std+self.mean
+        predictions = self.model.predict(inputs,batch_size=24)*self.std+self.mean
         return predictions, labels
 
     def load(self, filename):
-#load model
+        #load model
         self.model = joblib.load(filename)
 
     def save(self, filename):
-# save model
+        # save model
         if not os.path.exists('models/lstm'):
             os.makedirs('models/lstm')
         joblib.dump(self.model, 'models/lstm'+filename)
@@ -319,7 +356,7 @@ class Model_LSTM():
 if __name__ == "__main__":
     LSTM_model= Model_LSTM()
     Processer = Data_Processor()
-    user_profile = Processer.gen_user_profile()
+    user_profile = Processer.gen_user_profile(user_type= "Senior Citizen")
     Processed_data=Processer.process_data("raw_data", user_profile)
     LSTM_model.train(data=Processed_data)
 
@@ -379,16 +416,34 @@ if __name__ == "__main__":
     main_settings.grid(row=1, column=0, sticky="news", padx=20, pady=20)
 
     # displaying the graph
-    def plot_prediction(user_profile, predictions, labels, time_range = "week"):
+    def plot_prediction(user_profile, data, time_range = "week"):
         time = {"day": 288, "week": 7*288, "month": 288*7*4, "year": 288*52*7}
         
-        # add user info on plot
-        user_info = f"user_type: {user_profile['user_type']}\nnoise_type: {user_profile['noise_type']}\npets: {user_profile['pets']}\nplants: {user_profile['plants']}\ninsolation_time: {user_profile['insolation_time']}"
-        plt.plot(predictions[:time[time_range]].flatten())
-        plt.plot(labels[:time[time_range]].flatten())
+        predictions, labels = LSTM_model.predict(data)
+       
+        processed_data_df = pd.DataFrame(data,columns=['Date','time','External Temp', 'Outside Humidity', 'AC Temp', 'Internal Temp', 'AI Change', 'User Change', 'Day of Week', 'Season'])# add user info on plot
+        
+        print("user_type: ", user_profile["user_type"])
+        print("noise_type: ", user_profile["noise_type"])
+        print("pets: ", user_profile["pets"])
+        print("plants: ", user_profile["plants"])
+        print("insolation_time: ", user_profile["insolation_time"])
+
+        # if ac temp is -99, replace 0
+        processed_data_df = processed_data_df.replace(-99, 0)
+        # filter outlines >-20
+        processed_data_df = processed_data_df[processed_data_df['AC Temp'] > -20]
+        processed_data_df = processed_data_df[processed_data_df['Internal Temp'] > -20]
+        processed_data_df = processed_data_df[processed_data_df['External Temp'] > -20]
+        # plot data
+        #user_info = f"user_type: {user_profile['user_type']}\nnoise_type: {user_profile['noise_type']}\npets: {user_profile['pets']}\nplants: {user_profile['plants']}\ninsolation_time: {user_profile['insolation_time']}"
+        plt.plot(predictions.flatten()[:time[time_range]])
+        plt.plot(labels.flatten()[:time[time_range]])
+        plt.plot(processed_data_df['Internal Temp'][:time[time_range]], label="Internal Temp", color="blue")
+        plt.plot(processed_data_df['External Temp'][:time[time_range]], label="External Temp", color="green")
         plt.title('model prediction VS actual')
-        plt.legend(['prediction', 'actual'], loc='upper left')
-        plt.text(0.5, -0.2, user_info, ha='center', va='top')
+        plt.legend(['prediction', 'actual', 'Internal Temp', 'External Temp'], loc='upper left')
+        #plt.text(0.5, -0.2, user_info, ha='center', va='top')
         plt.show()
 
     def graph():
@@ -403,10 +458,10 @@ if __name__ == "__main__":
         schedule_cycle = 7
         user_profile = processor.gen_user_profile(occupation, sound, pets, plants, insolation_time_ac, insolation_time_external, schedule_cycle)
         data = processor.process_data("raw_data", user_profile, quick = True)
-        predictions, labels = LSTM_model.predict(data)
-        plot_prediction(user_profile, predictions, labels, time_range)
+        plot_prediction(user_profile, data, time_range)
 
     mybuttonn = tkinter.Button(window, text="Graph", command=graph, width=10, height=2)
     mybuttonn.pack()
+
 
     window.mainloop() 
