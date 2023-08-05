@@ -9,7 +9,6 @@ Welcome to the Firefly-AI repository! This project aims to develop an AI-powered
 - [Usage](#usage)
 - [Notebooks](#notebooks)
 - [Data](#data)
-- [Contributors](#contributors)
 - [License](#license)
 
 ## Introduction
@@ -40,13 +39,6 @@ Firefly-AI is a senior design project focused on utilizing machine learning to u
 ## Data
 
 The `raw_data.csv` and `raw_data.txt` files contain the raw data used for training and testing the model. Make sure to preprocess the data before using it for training.
-
-## Contributors
-
-- Aaryan
-- Sophie
-- Karim
-- Shef 
 
 Feel free to contribute by opening issues or submitting pull requests!
 
